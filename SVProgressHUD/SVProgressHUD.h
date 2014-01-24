@@ -38,6 +38,8 @@ typedef NSUInteger SVProgressHUDMaskType;
 @property (readwrite, nonatomic, retain) UIFont *hudFont NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
 @property (readwrite, nonatomic, retain) UIImage *hudSuccessImage NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
 @property (readwrite, nonatomic, retain) UIImage *hudErrorImage NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
+@property (readwrite, nonatomic, retain) UIImage *hudCloseNormalImage NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
+@property (readwrite, nonatomic, retain) UIImage *hudCloseHightLightedImage NS_AVAILABLE_IOS(5_0) UI_APPEARANCE_SELECTOR;
 #endif
 
 + (void)setOffsetFromCenter:(UIOffset)offset;
@@ -47,10 +49,12 @@ typedef NSUInteger SVProgressHUDMaskType;
 + (void)showWithMaskType:(SVProgressHUDMaskType)maskType;
 + (void)showWithStatus:(NSString*)status;
 + (void)showWithStatus:(NSString*)status maskType:(SVProgressHUDMaskType)maskType;
++ (void)showWithStatus:(NSString*)status maskType:(SVProgressHUDMaskType)maskType closeBlock:(void(^)())closeBlock;
 
 + (void)showProgress:(float)progress;
 + (void)showProgress:(float)progress status:(NSString*)status;
 + (void)showProgress:(float)progress status:(NSString*)status maskType:(SVProgressHUDMaskType)maskType;
++ (void)showProgress:(float)progress status:(NSString*)status maskType:(SVProgressHUDMaskType)maskType closeBlock:(void(^)())closeBlock;
 
 + (void)setStatus:(NSString*)string; // change the HUD loading status while it's showing
 

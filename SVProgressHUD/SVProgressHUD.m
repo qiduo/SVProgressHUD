@@ -42,6 +42,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 @property (nonatomic, strong, readonly) UILabel *stringLabel;
 @property (nonatomic, strong, readonly) UIImageView *imageView;
 @property (nonatomic, strong, readonly) UIActivityIndicatorView *spinnerView;
+@property (nonatomic, strong, readonly) UIButton *closeButton;
 
 @property (nonatomic, readwrite) CGFloat progress;
 @property (nonatomic, readwrite) NSUInteger activityCount;
@@ -51,9 +52,12 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 @property (nonatomic, readonly) CGFloat visibleKeyboardHeight;
 @property (nonatomic, assign) UIOffset offsetFromCenter;
 
+@property (nonatomic, strong, readwrite) void(^closeBlock)();
+
 - (void)showProgress:(float)progress
               status:(NSString*)string
-            maskType:(SVProgressHUDMaskType)hudMaskType;
+            maskType:(SVProgressHUDMaskType)hudMaskType
+          closeBlock:(void(^)())closeBlock;
 
 - (void)showImage:(UIImage*)image
            status:(NSString*)status
@@ -77,6 +81,8 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 - (UIFont *)hudFont;
 - (UIImage *)hudSuccessImage;
 - (UIImage *)hudErrorImage;
+- (UIImage *)hudCloseNormalImage;
+- (UIImage *)hudCloseHighLightedImage;
 #endif
 
 @end
@@ -84,7 +90,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 
 @implementation SVProgressHUD
 
-@synthesize overlayView, hudView, maskType, fadeOutTimer, stringLabel, imageView, spinnerView, visibleKeyboardHeight;
+@synthesize overlayView, hudView, maskType, fadeOutTimer, stringLabel, imageView, spinnerView, closeButton, visibleKeyboardHeight;
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 50000
 @synthesize hudBackgroundColor = _uiHudBgColor;
 @synthesize hudForegroundColor = _uiHudFgColor;
@@ -94,6 +100,9 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 @synthesize hudFont = _uiHudFont;
 @synthesize hudSuccessImage = _uiHudSuccessImage;
 @synthesize hudErrorImage = _uiHudErrorImage;
+@synthesize hudCloseNormalImage = _uiHudCloseNormalImage;
+@synthesize hudCloseHightLightedImage = _uiHudCloseHightLightedImage;
+@synthesize closeBlock = _closeBlock;
 #endif
 
 
@@ -112,31 +121,39 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 #pragma mark - Show Methods
 
 + (void)show {
-    [[self sharedView] showProgress:-1 status:nil maskType:SVProgressHUDMaskTypeNone];
+    [[self sharedView] showProgress:-1 status:nil maskType:SVProgressHUDMaskTypeNone closeBlock:nil];
 }
 
 + (void)showWithStatus:(NSString *)status {
-    [[self sharedView] showProgress:-1 status:status maskType:SVProgressHUDMaskTypeNone];
+    [[self sharedView] showProgress:-1 status:status maskType:SVProgressHUDMaskTypeNone closeBlock:nil];
 }
 
 + (void)showWithMaskType:(SVProgressHUDMaskType)maskType {
-    [[self sharedView] showProgress:-1 status:nil maskType:maskType];
+    [[self sharedView] showProgress:-1 status:nil maskType:maskType closeBlock:nil];
 }
 
 + (void)showWithStatus:(NSString*)status maskType:(SVProgressHUDMaskType)maskType {
-    [[self sharedView] showProgress:-1 status:status maskType:maskType];
+    [[self sharedView] showProgress:-1 status:status maskType:maskType closeBlock:nil];
+}
+
++ (void)showWithStatus:(NSString *)status maskType:(SVProgressHUDMaskType)maskType closeBlock:(void (^)())closeBlock {
+    [[self sharedView] showProgress:-1 status:status maskType:maskType closeBlock:closeBlock];
 }
 
 + (void)showProgress:(float)progress {
-    [[self sharedView] showProgress:progress status:nil maskType:SVProgressHUDMaskTypeNone];
+    [[self sharedView] showProgress:progress status:nil maskType:SVProgressHUDMaskTypeNone closeBlock:nil];
 }
 
 + (void)showProgress:(float)progress status:(NSString *)status {
-    [[self sharedView] showProgress:progress status:status maskType:SVProgressHUDMaskTypeNone];
+    [[self sharedView] showProgress:progress status:status maskType:SVProgressHUDMaskTypeNone closeBlock:nil];
 }
 
 + (void)showProgress:(float)progress status:(NSString *)status maskType:(SVProgressHUDMaskType)maskType {
-    [[self sharedView] showProgress:progress status:status maskType:maskType];
+    [[self sharedView] showProgress:progress status:status maskType:maskType closeBlock:nil];
+}
+
++ (void)showProgress:(float)progress status:(NSString *)status maskType:(SVProgressHUDMaskType)maskType closeBlock:(void(^)())closeBlock{
+    [[self sharedView] showProgress:progress status:status maskType:maskType closeBlock:closeBlock];
 }
 
 #pragma mark - Show then dismiss methods
@@ -284,6 +301,13 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 	self.stringLabel.hidden = NO;
 	self.stringLabel.frame = labelRect;
 	
+    if (self.closeBlock) {
+        self.closeButton.hidden = NO;
+        self.closeButton.center = CGPointMake(hudWidth - self.closeButton.bounds.size.width/2, self.closeButton.bounds.size.height/2);
+    } else {
+        self.closeButton.hidden = YES;
+    }
+	
 	if(string) {
 		self.spinnerView.center = CGPointMake(ceil(CGRectGetWidth(self.hudView.bounds)/2)+0.5, 40.5);
         
@@ -424,7 +448,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
                          animations:^{
                              [self moveToPoint:newCenter rotateAngle:rotateAngle];
                          } completion:NULL];
-    } 
+    }
     
     else {
         [self moveToPoint:newCenter rotateAngle:rotateAngle];
@@ -439,11 +463,17 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 
 - (void)overlayViewDidReceiveTouchEvent:(id)sender forEvent:(UIEvent *)event {
     [[NSNotificationCenter defaultCenter] postNotificationName:SVProgressHUDDidReceiveTouchEventNotification object:event];
+    UITouch *touch = [[event allTouches] anyObject];
+    CGPoint loc = [touch locationInView:self.hudView];
+    BOOL touched = CGRectContainsPoint(self.closeButton.frame, loc);
+    if (touched) {
+        [self didClickCloseButton];
+    }
 }
 
 #pragma mark - Master show/dismiss methods
 
-- (void)showProgress:(float)progress status:(NSString*)string maskType:(SVProgressHUDMaskType)hudMaskType {
+- (void)showProgress:(float)progress status:(NSString*)string maskType:(SVProgressHUDMaskType)hudMaskType closeBlock:(void(^)())closeBlock{
     
     if(!self.overlayView.superview){
         NSEnumerator *frontToBackWindows = [[[UIApplication sharedApplication]windows]reverseObjectEnumerator];
@@ -462,6 +492,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
     self.imageView.hidden = YES;
     self.maskType = hudMaskType;
     self.progress = progress;
+    self.closeBlock = closeBlock;
     
     self.stringLabel.text = string;
     [self updatePosition];
@@ -544,6 +575,8 @@ static const CGFloat SVProgressHUDRingThickness = 6;
     self.imageView.hidden = NO;
     
     self.stringLabel.text = string;
+    self.closeBlock = nil;
+    
     [self updatePosition];
     [self.spinnerView stopAnimating];
     
@@ -569,6 +602,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
                                                       userInfo:userInfo];
     
     self.activityCount = 0;
+    self.closeBlock = nil;
     [UIView animateWithDuration:0.15
                           delay:0
                         options:UIViewAnimationCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
@@ -668,6 +702,13 @@ static const CGFloat SVProgressHUDRingThickness = 6;
     slice.lineJoin = kCALineJoinBevel;
     slice.path = smoothedPath.CGPath;
     return slice;
+}
+
+#pragma mark - Close Button Event 
+- (void)didClickCloseButton {
+    if (self.closeBlock) {
+        self.closeBlock();
+    }
 }
 
 #pragma mark - Utilities
@@ -796,6 +837,22 @@ static const CGFloat SVProgressHUDRingThickness = 6;
         [self.hudView addSubview:spinnerView];
     
     return spinnerView;
+}
+
+- (UIButton *)closeButton {
+    if (closeButton == nil) {
+        closeButton = [[UIButton alloc] init];
+        [closeButton setBackgroundImage:[self hudCloseNormalImage] forState:UIControlStateNormal];
+        [closeButton setBackgroundImage:[self hudCloseHightLightedImage] forState:UIControlStateHighlighted];
+        closeButton.bounds = CGRectMake(0, 0, 24, 24);
+        [closeButton addTarget:self action:@selector(didClickCloseButton) forControlEvents:UIControlEventTouchUpInside];
+    }
+    
+    if (!closeButton.superview) {
+        [self.hudView addSubview:closeButton];
+    }
+    
+    return closeButton;
 }
 
 - (CGFloat)visibleKeyboardHeight {
@@ -961,6 +1018,34 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 #else
     return [UIImage imageNamed:@"SVProgressHUD.bundle/error.png"];
 #endif
+}
+
+- (UIImage *)hudCloseNormalImage {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 50000
+    if(_uiHudCloseNormalImage == nil) {
+        _uiHudCloseNormalImage = [[[self class] appearance] hudCloseNormalImage];
+    }
+    
+    if(_uiHudCloseNormalImage != nil) {
+        return _uiHudCloseNormalImage;
+    }
+#endif
+    
+    return [UIImage imageNamed:@"SVProgressHUD.bundle/close.png"];
+}
+
+- (UIImage *)hudCloseHightLightedImage {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 50000
+    if(_uiHudCloseHightLightedImage == nil) {
+        _uiHudCloseHightLightedImage = [[[self class] appearance] hudCloseHightLightedImage];
+    }
+    
+    if(_uiHudCloseHightLightedImage != nil) {
+        return _uiHudCloseHightLightedImage;
+    }
+#endif
+    
+    return [UIImage imageNamed:@"SVProgressHUD.bundle/cancel.png"];
 }
 
 @end
