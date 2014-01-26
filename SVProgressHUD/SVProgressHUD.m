@@ -303,7 +303,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 	
     if (self.closeBlock) {
         self.closeButton.hidden = NO;
-        self.closeButton.center = CGPointMake(hudWidth - self.closeButton.bounds.size.width/2 - 2, self.closeButton.bounds.size.height/2 + 2);
+        self.closeButton.center = CGPointMake(hudWidth - self.closeButton.bounds.size.width/2 - 5, self.closeButton.bounds.size.height/2 + 5);
     } else {
         self.closeButton.hidden = YES;
     }
