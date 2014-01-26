@@ -303,7 +303,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 	
     if (self.closeBlock) {
         self.closeButton.hidden = NO;
-        self.closeButton.center = CGPointMake(hudWidth - self.closeButton.bounds.size.width/2, self.closeButton.bounds.size.height/2);
+        self.closeButton.center = CGPointMake(hudWidth - self.closeButton.bounds.size.width/2 - 2, self.closeButton.bounds.size.height/2 + 2);
     } else {
         self.closeButton.hidden = YES;
     }
@@ -463,12 +463,6 @@ static const CGFloat SVProgressHUDRingThickness = 6;
 
 - (void)overlayViewDidReceiveTouchEvent:(id)sender forEvent:(UIEvent *)event {
     [[NSNotificationCenter defaultCenter] postNotificationName:SVProgressHUDDidReceiveTouchEventNotification object:event];
-    UITouch *touch = [[event allTouches] anyObject];
-    CGPoint loc = [touch locationInView:self.hudView];
-    BOOL touched = CGRectContainsPoint(self.closeButton.frame, loc);
-    if (touched) {
-        [self didClickCloseButton];
-    }
 }
 
 #pragma mark - Master show/dismiss methods
@@ -493,6 +487,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
     self.maskType = hudMaskType;
     self.progress = progress;
     self.closeBlock = closeBlock;
+    self.userInteractionEnabled = closeBlock != nil;
     
     self.stringLabel.text = string;
     [self updatePosition];
