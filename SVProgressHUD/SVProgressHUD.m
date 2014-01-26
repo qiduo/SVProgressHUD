@@ -1040,7 +1040,7 @@ static const CGFloat SVProgressHUDRingThickness = 6;
     }
 #endif
     
-    return [UIImage imageNamed:@"SVProgressHUD.bundle/cancel.png"];
+    return [UIImage imageNamed:@"SVProgressHUD.bundle/close.png"];
 }
 
 @end
